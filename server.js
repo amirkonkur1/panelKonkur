@@ -27,7 +27,7 @@ const dbConfig = {
 let pool;
 async function initDB() {
   try {
-    // First connect without database to create it if needed
+    // 1. Connect without database to create it if needed
     const connWithoutDB = await mysql.createConnection({
       host: dbConfig.host,
       port: dbConfig.port,
@@ -40,12 +40,11 @@ async function initDB() {
       CHARACTER SET utf8mb4 COLLATE utf8mb4_persian_ci`);
     await connWithoutDB.end();
 
-    // Now connect with database
+    // 2. Connect with database
     pool = mysql.createPool(dbConfig);
-
-    // Create tables
     const conn = await pool.getConnection();
 
+    // 3. Create Tables
     await conn.query(`CREATE TABLE IF NOT EXISTS users (
       id INT PRIMARY KEY AUTO_INCREMENT,
       username VARCHAR(50) NOT NULL UNIQUE,
@@ -120,20 +119,47 @@ async function initDB() {
       FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci`);
 
-    // Create indexes
-    try {
-      await conn.query('CREATE INDEX idx_study_logs_date ON study_logs(study_date)');
-    } catch(e) {}
-    try {
-      await conn.query('CREATE INDEX idx_study_logs_subject ON study_logs(subject_id)');
-    } catch(e) {}
-    try {
-      await conn.query('CREATE INDEX idx_weekly_schedule_day ON weekly_schedule(day_of_week)');
-    } catch(e) {}
-    try {
-      await conn.query('CREATE INDEX idx_exams_date ON exams(exam_date)');
-    } catch(e) {}
+    // 4. Create Indexes (Ignore errors if they already exist)
+    try { await conn.query('CREATE INDEX idx_study_logs_date ON study_logs(study_date)'); } catch(e){}
+    try { await conn.query('CREATE INDEX idx_study_logs_subject ON study_logs(subject_id)'); } catch(e){}
+    try { await conn.query('CREATE INDEX idx_weekly_schedule_day ON weekly_schedule(day_of_week)'); } catch(e){}
+    try { await conn.query('CREATE INDEX idx_exams_date ON exams(exam_date)'); } catch(e){}
 
+    // 5. Seed Default Data
+    const [users] = await conn.query('SELECT COUNT(*) as cnt FROM users');
+    if (users[0].cnt === 0) {
+      const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'student123', 10);
+      await conn.query('INSERT INTO users (username, password_hash, full_name) VALUES (?, ?, ?)',
+        ['student', hash, 'دانش‌آموز']);
+    }
+
+    const [subjects] = await conn.query('SELECT COUNT(*) as cnt FROM subjects');
+    if (subjects[0].cnt === 0) {
+      const defaultSubjects = [
+        ['ریاضیات', '#E74C3C', '📐'],
+        ['فیزیک', '#3498DB', '⚡'],
+        ['شیمی', '#2ECC71', '🧪'],
+        ['زیست‌شناسی', '#27AE60', '🧬'],
+        ['ادبیات فارسی', '#9B59B6', '📜'],
+        ['عربی', '#F39C12', '🕌'],
+        ['زبان انگلیسی', '#1ABC9C', '🌍'],
+        ['دینی', '#E67E22', '📿'],
+        ['تاریخ', '#8E44AD', '🏛️'],
+        ['جغرافیا', '#16A085', '🗺️']
+      ];
+      for (const s of defaultSubjects) {
+        await conn.query('INSERT INTO subjects (name, color, icon) VALUES (?, ?, ?)', s);
+      }
+    }
+
+    conn.release();
+    console.log('✅ Database initialized successfully');
+  } catch (err) {
+    console.error('❌ Database initialization error:', err.message);
+    // Retry after 3 seconds
+    setTimeout(initDB, 3000);
+  }
+}
     // Seed default data
     const [users] = await conn.query('SELECT COUNT(*) as cnt FROM users');
     if (users[0].cnt === 0) {
