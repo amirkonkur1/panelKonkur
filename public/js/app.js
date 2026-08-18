@@ -958,7 +958,103 @@ $$('.modal').forEach(modal => {
     }
   });
 });
+///--
+// ──────────── Jalali Date Helper ────────────
+function toJalali(dateStr) {
+  if (!dateStr) return '';
+  // استفاده از moment-jalaali اگر در دسترس باشد، иначе فرمت ساده
+  try {
+    const m = moment(dateStr);
+    return m.format('jYYYY/jMM/jDD');
+  } catch(e) {
+    return dateStr;
+  }
+}
 
+// ──────────── Dark Mode Toggle ────────────
+function toggleTheme() {
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+}
+
+// اعمال تم ذخیره شده هنگام لود
+document.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+  }
+  
+  // اضافه کردن دکمه تم به هدر
+  const topBar = $('.top-bar');
+  if(topBar) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-secondary';
+    btn.innerHTML = '🌓';
+    btn.onclick = toggleTheme;
+    btn.style.marginLeft = '10px';
+    topBar.insertBefore(btn, topBar.firstChild);
+  }
+});
+
+// ──────────── Export Data ────────────
+async function exportData() {
+  try {
+    const response = await fetch('/api/export');
+    if (!response.ok) throw new Error('خطا در دریافت داده‌ها');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('فایل پشتیبان دانلود شد', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// اضافه کردن دکمه پشتیبان‌گیری به منو
+document.addEventListener('DOMContentLoaded', () => {
+  const nav = $('.sidebar-nav');
+  if(nav) {
+    const link = document.createElement('a');
+    link.href = '#';
+    link.className = 'nav-item';
+    link.innerHTML = '<span class="nav-icon">💾</span> پشتیبان‌گیری';
+    link.onclick = (e) => { e.preventDefault(); exportData(); };
+    nav.appendChild(link);
+  }
+});
+
+// ──────────── Motivational Message ────────────
+async function checkMotivation() {
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const logs = await api(`/api/study-logs?from=${today}&to=${today}`);
+    if (logs.length === 0) {
+      const container = $('#page-dashboard .content-area');
+      if(container) {
+        const msg = document.createElement('div');
+        msg.className = 'card motivation-card';
+        msg.innerHTML = `
+          <h3>💪 انگیزه روزانه</h3>
+          <p>هنوز مطالعه‌ای برای امروز ثبت نکردی. حتی ۱۵ دقیقه مطالعه هم قدم بزرگی است!</p>
+          <button class="btn btn-primary" onclick="navigateTo('study-log')">ثبت مطالعه سریع</button>
+        `;
+        container.prepend(msg);
+      }
+    }
+  } catch(e) {}
+}
+
+// فراخوانی در لود داشبورد
+const originalLoadDashboard = loadDashboard;
+loadDashboard = async function() {
+  await originalLoadDashboard();
+  checkMotivation();
+};
 // ──────────── Initialize ────────────
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
