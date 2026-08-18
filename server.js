@@ -242,7 +242,33 @@ app.post('/api/logout', (req, res) => {
   req.session.destroy();
   res.json({ success: true });
 });
+// ──────────── Backup / Export Data ────────────
+app.get('/api/export', requireAuth, async (req, res) => {
+  try {
+    const [subjects] = await pool.query('SELECT * FROM subjects');
+    const [teachers] = await pool.query('SELECT * FROM teachers');
+    const [schedule] = await pool.query('SELECT * FROM weekly_schedule');
+    const [logs] = await pool.query('SELECT * FROM study_logs');
+    const [exams] = await pool.query('SELECT * FROM exams');
+    const [goals] = await pool.query('SELECT * FROM study_goals');
 
+    const data = {
+      exportDate: new Date().toISOString(),
+      subjects,
+      teachers,
+      schedule,
+      logs,
+      exams,
+      goals
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=study-backup.json');
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.get('/api/me', (req, res) => {
   if (req.session && req.session.userId) {
     res.json({ loggedIn: true, name: req.session.userName });
