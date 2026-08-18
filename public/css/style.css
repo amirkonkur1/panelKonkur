@@ -1179,3 +1179,63 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+/* ═══════ Dark Mode ═══════ */
+body.dark-mode {
+  --bg: #121212;
+  --bg-card: #1E1E1E;
+  --text: #E0E0E0;
+  --text-light: #A0A0A0;
+  --border: #333333;
+  --primary: #BB86FC;
+  --primary-dark: #9965F4;
+  --shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+
+body.dark-mode .login-card {
+  background: #1E1E1E;
+  color: white;
+}
+
+body.dark-mode .sidebar {
+  background: linear-gradient(180deg, #121212 0%, #000000 100%);
+  border-left: 1px solid #333;
+}
+
+body.dark-mode .data-table th {
+  background: #2C2C2C;
+  color: #ccc;
+}
+
+body.dark-mode .data-table td {
+  border-bottom-color: #333;
+}
+
+body.dark-mode .form-group input,
+body.dark-mode .form-group select,
+body.dark-mode .form-group textarea {
+  background: #2C2C2C;
+  border-color: #444;
+  color: white;
+}
+
+body.dark-mode .modal-content {
+  background: #1E1E1E;
+  color: white;
+}
+
+body.dark-mode .stat-card, 
+body.dark-mode .card,
+body.dark-mode .chart-container,
+body.dark-mode .subject-breakdown,
+body.dark-mode .today-schedule {
+  background: #1E1E1E;
+  color: #E0E0E0;
+}
+
+.motivation-card {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #333;
+  text-align: center;
+}
+.motivation-card h3 { margin-bottom: 10px; }
+.motivation-card p { margin-bottom: 15px; font-size: 15px; }
