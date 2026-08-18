@@ -1,11 +1,10 @@
 {
   "name": "student-study-tracker",
-  "version": "1.1.0",
-  "description": "سیستم پیگیری مطالعه دانش‌آموز - نسخه پیشرفته",
+  "version": "2.0.0",
+  "description": "سیستم پیشرفته پیگیری مطالعه با رابط کاربری مدرن",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
