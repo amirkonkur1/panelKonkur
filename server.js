@@ -10,7 +10,10 @@ const dayjs = require('dayjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+//-------------
+const moment = require('moment-jalaali');
+// تنظیمات moment-jalaali
+moment.loadPersian({ dialect: 'persian-modern' });
 // ──────────── Database Configuration ────────────
 const dbConfig = {
   host: process.env.MYSQLHOST || 'localhost',
