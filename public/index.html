@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📚 پیگیری مطالعه</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- ═══════ Login Page ═══════ -->
+  <div id="loginPage" class="page active">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-icon">📚</div>
+        <h1>سیستم پیگیری مطالعه</h1>
+        <p class="login-subtitle">برنامه‌ریزی، ثبت و پیگیری پیشرفت تحصیلی</p>
+        <form id="loginForm">
+          <div class="form-group">
+            <label>نام کاربری</label>
+            <input type="text" id="loginUsername" placeholder="نام کاربری" required>
+          </div>
+          <div class="form-group">
+            <label>رمز عبور</label>
+            <input type="password" id="loginPassword" placeholder="رمز عبور" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">ورود به سیستم</button>
+        </form>
+        <p class="login-hint">رمز پیش‌فرض: student / student123</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ Main App ═══════ -->
+  <div id="appPage" class="page">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-logo">📚</span>
+        <span class="sidebar-title">پیگیری مطالعه</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">📊</span> داشبورد
+        </a>
+        <a href="#" class="nav-item" data-page="study-log">
+          <span class="nav-icon">✍️</span> ثبت مطالعه
+        </a>
+        <a href="#" class="nav-item" data-page="schedule">
+          <span class="nav-icon">📅</span> برنامه هفتگی
+        </a>
+        <a href="#" class="nav-item" data-page="teachers">
+          <span class="nav-icon">👨‍🏫</span> اساتید
+        </a>
+        <a href="#" class="nav-item" data-page="subjects">
+          <span class="nav-icon">📖</span> دروس
+        </a>
+        <a href="#" class="nav-item" data-page="exams">
+          <span class="nav-icon">📝</span> امتحانات
+        </a>
+        <a href="#" class="nav-item" data-page="goals">
+          <span class="nav-icon">🎯</span> اهداف
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn btn-danger btn-full" id="logoutBtn">خروج</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-bar">
+        <button class="menu-toggle" id="menuToggle">☰</button>
+        <h2 id="pageTitle">داشبورد</h2>
+        <div class="user-info">
+          <span id="userName">دانش‌آموز</span>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- ── Dashboard Page ── -->
+        <div class="page-section active" id="page-dashboard">
+          <div class="stats-grid">
+            <div class="stat-card stat-today">
+              <div class="stat-icon">📅</div>
+              <div class="stat-info">
+                <span class="stat-label">امروز</span>
+                <span class="stat-value" id="statToday">0 دقیقه</span>
+              </div>
+            </div>
+            <div class="stat-card stat-week">
+              <div class="stat-icon">📆</div>
+              <div class="stat-info">
+                <span class="stat-label">این هفته</span>
+                <span class="stat-value" id="statWeek">0 دقیقه</span>
+              </div>
+            </div>
+            <div class="stat-card stat-month">
+              <div class="stat-icon">🗓️</div>
+              <div class="stat-info">
+                <span class="stat-label">این ماه</span>
+                <span class="stat-value" id="statMonth">0 دقیقه</span>
+              </div>
+            </div>
+            <div class="stat-card stat-total">
+              <div class="stat-icon">🏆</div>
+              <div class="stat-info">
+                <span class="stat-label">کل مطالعه</span>
+                <span class="stat-value" id="statTotal">0 ساعت</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="chart-container">
+            <h3>📈 نمودار مطالعه ۱۴ روز اخیر</h3>
+            <div class="bar-chart" id="dailyChart"></div>
+          </div>
+
+          <!-- Subject Breakdown -->
+          <div class="subject-breakdown">
+            <h3>📚 مطالعه دروس این هفته</h3>
+            <div id="subjectBreakdown" class="breakdown-list"></div>
+          </div>
+
+          <!-- Today's Schedule -->
+          <div class="today-schedule">
+            <h3>📋 برنامه امروز</h3>
+            <div id="todaySchedule" class="schedule-list"></div>
+          </div>
+        </div>
+
+        <!-- ── Study Log Page ── -->
+        <div class="page-section" id="page-study-log">
+          <div class="card">
+            <h3>✍️ ثبت مطالعه جدید</h3>
+            <form id="studyForm" class="form-grid">
+              <div class="form-group">
+                <label>درس</label>
+                <select id="studySubject" required></select>
+              </div>
+              <div class="form-group">
+                <label>تاریخ</label>
+                <input type="date" id="studyDate" required>
+              </div>
+              <div class="form-group">
+                <label>ساعت شروع</label>
+                <input type="time" id="studyStart" required>
+              </div>
+              <div class="form-group">
+                <label>ساعت پایان</label>
+                <input type="time" id="studyEnd" required>
+              </div>
+              <div class="form-group">
+                <label>موضوع</label>
+                <input type="text" id="studyTopic" placeholder="مثلاً: فصل ۳ - مشتق">
+              </div>
+              <div class="form-group">
+                <label>کیفیت (۱ تا ۵)</label>
+                <select id="studyQuality">
+                  <option value="1">۱ - بد</option>
+                  <option value="2">۲ - متوسط</option>
+                  <option value="3" selected>۳ - خوب</option>
+                  <option value="4">۴ - عالی</option>
+                  <option value="5">۵ - فوق‌العاده</option>
+                </select>
+              </div>
+              <div class="form-group full-width">
+                <label>یادداشت</label>
+                <textarea id="studyNotes" rows="3" placeholder="نکات، خلاصه، ..."></textarea>
+              </div>
+              <div class="form-group full-width">
+                <button type="submit" class="btn btn-primary">💾 ثبت مطالعه</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Filters -->
+          <div class="card">
+            <h3>🔍 فیلتر و جستجو</h3>
+            <div class="form-grid filter-grid">
+              <div class="form-group">
+                <label>از تاریخ</label>
+                <input type="date" id="filterFrom">
+              </div>
+              <div class="form-group">
+                <label>تا تاریخ</label>
+                <input type="date" id="filterTo">
+              </div>
+              <div class="form-group">
+                <label>درس</label>
+                <select id="filterSubject">
+                  <option value="">همه دروس</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <button class="btn btn-secondary" onclick="loadStudyLogs()" style="margin-top:28px">🔍 جستجو</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Study Logs Table -->
+          <div class="card">
+            <h3>📋 سوابق مطالعه</h3>
+            <div class="table-responsive">
+              <table class="data-table" id="studyLogsTable">
+                <thead>
+                  <tr>
+                    <th>تاریخ</th>
+                    <th>درس</th>
+                    <th>موضوع</th>
+                    <th>شروع</th>
+                    <th>پایان</th>
+                    <th>مدت</th>
+                    <th>کیفیت</th>
+                    <th>عملیات</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Schedule Page ── -->
+        <div class="page-section" id="page-schedule">
+          <div class="card">
+            <div class="card-header">
+              <h3>📅 برنامه هفتگی کلاس‌ها</h3>
+              <button class="btn btn-primary" onclick="showScheduleModal()">+ افزودن کلاس</button>
+            </div>
+
+            <!-- Weekly Grid -->
+            <div class="weekly-grid" id="weeklyGrid">
+              <div class="grid-header">
+                <div class="grid-cell header-cell">ساعت</div>
+                <div class="grid-cell header-cell">شنبه</div>
+                <div class="grid-cell header-cell">یکشنبه</div>
+                <div class="grid-cell header-cell">دوشنبه</div>
+                <div class="grid-cell header-cell">سه‌شنبه</div>
+                <div class="grid-cell header-cell">چهارشنبه</div>
+                <div class="grid-cell header-cell">پنجشنبه</div>
+                <div class="grid-cell header-cell">جمعه</div>
+              </div>
+              <div id="gridBody"></div>
+            </div>
+
+            <!-- Schedule List -->
+            <div class="schedule-table-container">
+              <table class="data-table" id="scheduleTable">
+                <thead>
+                  <tr>
+                    <th>روز</th>
+                    <th>ساعت</th>
+                    <th>درس</th>
+                    <th>استاد</th>
+                    <th>کلاس</th>
+                    <th>عملیات</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Teachers Page ── -->
+        <div class="page-section" id="page-teachers">
+          <div class="card">
+            <div class="card-header">
+              <h3>👨‍🏫 مدیریت اساتید</h3>
+              <button class="btn btn-primary" onclick="showTeacherModal()">+ افزودن استاد</button>
+            </div>
+            <div class="teachers-grid" id="teachersGrid"></div>
+          </div>
+        </div>
+
+        <!-- ── Subjects Page ── -->
+        <div class="page-section" id="page-subjects">
+          <div class="card">
+            <div class="card-header">
+              <h3>📖 مدیریت دروس</h3>
+              <button class="btn btn-primary" onclick="showSubjectModal()">+ افزودن درس</button>
+            </div>
+            <div class="subjects-grid" id="subjectsGrid"></div>
+          </div>
+        </div>
+
+        <!-- ── Exams Page ── -->
+        <div class="page-section" id="page-exams">
+          <div class="card">
+            <div class="card-header">
+              <h3>📝 مدیریت امتحانات</h3>
+              <button class="btn btn-primary" onclick="showExamModal()">+ افزودن امتحان</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table" id="examsTable">
+                <thead>
+                  <tr>
+                    <th>درس</th>
+                    <th>تاریخ</th>
+                    <th>ساعت</th>
+                    <th>نوع</th>
+                    <th>نمره</th>
+                    <th>عملیات</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Goals Page ── -->
+        <div class="page-section" id="page-goals">
+          <div class="card">
+            <h3>🎯 اهداف هفتگی مطالعه</h3>
+            <div id="goalsContainer"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══════ Modals ═══════ -->
+  <!-- Schedule Modal -->
+  <div class="modal" id="scheduleModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>افزودن/ویرایش کلاس</h3>
+        <button class="modal-close" onclick="closeModal('scheduleModal')">&times;</button>
+      </div>
+      <form id="scheduleForm">
+        <input type="hidden" id="scheduleId">
+        <div class="form-group">
+          <label>روز</label>
+          <select id="scheduleDay" required>
+            <option value="0">شنبه</option>
+            <option value="1">یکشنبه</option>
+            <option value="2">دوشنبه</option>
+            <option value="3">سه‌شنبه</option>
+            <option value="4">چهارشنبه</option>
+            <option value="5">پنجشنبه</option>
+            <option value="6">جمعه</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ساعت شروع</label>
+          <input type="time" id="scheduleStart" required>
+        </div>
+        <div class="form-group">
+          <label>ساعت پایان</label>
+          <input type="time" id="scheduleEnd" required>
+        </div>
+        <div class="form-group">
+          <label>درس</label>
+          <select id="scheduleSubject" required></select>
+        </div>
+        <div class="form-group">
+          <label>استاد</label>
+          <select id="scheduleTeacher"><option value="">بدون استاد</option></select>
+        </div>
+        <div class="form-group">
+          <label>شماره کلاس</label>
+          <input type="text" id="scheduleRoom" placeholder="مثلاً: ۲۰۱">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">💾 ذخیره</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Teacher Modal -->
+  <div class="modal" id="teacherModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>افزودن/ویرایش استاد</h3>
+        <button class="modal-close" onclick="closeModal('teacherModal')">&times;</button>
+      </div>
+      <form id="teacherForm" enctype="multipart/form-data">
+        <input type="hidden" id="teacherId">
+        <div class="form-group">
+          <label>نام استاد</label>
+          <input type="text" id="teacherName" required>
+        </div>
+        <div class="form-group">
+          <label>تخصص</label>
+          <input type="text" id="teacherSpecialty" placeholder="مثلاً: ریاضیات">
+        </div>
+        <div class="form-group">
+          <label>شماره تماس</label>
+          <input type="text" id="teacherPhone">
+        </div>
+        <div class="form-group">
+          <label>عکس استاد</label>
+          <input type="file" id="teacherPhoto" accept="image/*">
+          <div id="teacherPhotoPreview" class="photo-preview"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">💾 ذخیره</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Subject Modal -->
+  <div class="modal" id="subjectModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>افزودن/ویرایش درس</h3>
+        <button class="modal-close" onclick="closeModal('subjectModal')">&times;</button>
+      </div>
+      <form id="subjectForm">
+        <input type="hidden" id="subjectId">
+        <div class="form-group">
+          <label>نام درس</label>
+          <input type="text" id="subjectName" required>
+        </div>
+        <div class="form-group">
+          <label>آیکون (Emoji)</label>
+          <input type="text" id="subjectIcon" value="📖">
+        </div>
+        <div class="form-group">
+          <label>رنگ</label>
+          <input type="color" id="subjectColor" value="#4A90D9">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">💾 ذخیره</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Exam Modal -->
+  <div class="modal" id="examModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>افزودن/ویرایش امتحان</h3>
+        <button class="modal-close" onclick="closeModal('examModal')">&times;</button>
+      </div>
+      <form id="examForm">
+        <input type="hidden" id="examId">
+        <div class="form-group">
+          <label>درس</label>
+          <select id="examSubject" required></select>
+        </div>
+        <div class="form-group">
+          <label>تاریخ</label>
+          <input type="date" id="examDate" required>
+        </div>
+        <div class="form-group">
+          <label>ساعت</label>
+          <input type="time" id="examTime">
+        </div>
+        <div class="form-group">
+          <label>نوع</label>
+          <select id="examType">
+            <option value="میان‌ترم">میان‌ترم</option>
+            <option value="پایان‌ترم">پایان‌ترم</option>
+            <option value="کوییز">کوییز</option>
+            <option value="آزمونک">آزمونک</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>نمره (اختیاری)</label>
+          <input type="number" id="examScore" step="0.25" min="0" max="20">
+        </div>
+        <div class="form-group">
+          <label>حداکثر نمره</label>
+          <input type="number" id="examMaxScore" value="20" step="0.25">
+        </div>
+        <div class="form-group">
+          <label>یادداشت</label>
+          <textarea id="examNotes" rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">💾 ذخیره</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
