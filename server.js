@@ -154,8 +154,13 @@ async function initDB() {
         ['زبان انگلیسی', '#1ABC9C', '🌍'],
         ['دینی', '#E67E22', '📿'],
         ['تاریخ', '#8E44AD', '🏛️'],
-        ['جغرافیا', '#16A085', '🗺️')
+        ['جغرافیا', '#16A085', '🗺️'] // ✅ اصلاح شد: پرانتز اضافی حذف شد
       ];
+      
+      for (const s of defaultSubjects) {
+        await conn.query('INSERT INTO subjects (name, color, icon) VALUES (?, ?, ?)', s);
+      }
+    }
       for (const s of defaultSubjects) {
         await conn.query('INSERT INTO subjects (name, color, icon) VALUES (?, ?, ?)', s);
       }
