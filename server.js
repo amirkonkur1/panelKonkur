@@ -11,7 +11,7 @@ const dayjs = require('dayjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ──────────── Database Connection ────────────
+// ──────────── Database Configuration ────────────
 const dbConfig = {
   host: process.env.MYSQLHOST || 'localhost',
   port: process.env.MYSQLPORT || 3306,
@@ -25,6 +25,8 @@ const dbConfig = {
 };
 
 let pool;
+
+// ──────────── Initialize Database ────────────
 async function initDB() {
   try {
     // 1. Connect without database to create it if needed
@@ -40,7 +42,7 @@ async function initDB() {
       CHARACTER SET utf8mb4 COLLATE utf8mb4_persian_ci`);
     await connWithoutDB.end();
 
-    // 2. Connect with database
+    // 2. Create Pool and Get Connection
     pool = mysql.createPool(dbConfig);
     const conn = await pool.getConnection();
 
@@ -160,48 +162,8 @@ async function initDB() {
     setTimeout(initDB, 3000);
   }
 }
-    // Seed default data
-    const [users] = await conn.query('SELECT COUNT(*) as cnt FROM users');
-    if (users[0].cnt === 0) {
-      const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'student123', 10);
-      await conn.query('INSERT INTO users (username, password_hash, full_name) VALUES (?, ?, ?)',
-        ['student', hash, 'دانش‌آموز']);
-    }
 
-    const [subjects] = await conn.query('SELECT COUNT(*) as cnt FROM subjects');
-    if (subjects[0].cnt === 0) {
-      const defaultSubjects = [
-        ['ریاضیات', '#E74C3C', '📐'],
-        ['فیزیک', '#3498DB', '⚡'],
-        ['شیمی', '#2ECC71', '🧪'],
-        ['زیست‌شناسی', '#27AE60', '🧬'],
-        ['ادبیات فارسی', '#9B59B6', '📜'],
-        ['عربی', '#F39C12', '🕌'],
-        ['زبان انگلیسی', '#1ABC9C', '🌍'],
-        ['دینی', '#E67E22', '📿'],
-        ['تاریخ', '#8E44AD', '🏛️'],
-        ['جغرافیا', '#16A085', '🗺️'] // ✅ اصلاح شد: پرانتز اضافی حذف شد
-      ];
-      
-      for (const s of defaultSubjects) {
-        await conn.query('INSERT INTO subjects (name, color, icon) VALUES (?, ?, ?)', s);
-      }
-    }
-      for (const s of defaultSubjects) {
-        await conn.query('INSERT INTO subjects (name, color, icon) VALUES (?, ?, ?)', s);
-      }
-    }
-
-    conn.release();
-    console.log('✅ Database initialized successfully');
-  } catch (err) {
-    console.error('❌ Database initialization error:', err.message);
-    // Retry after 3 seconds
-    setTimeout(initDB, 3000);
-  }
-}
-
-// ──────────── Middleware ────────────
+// ──────────── Middleware Setup ────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -250,30 +212,20 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'لطفاً وارد شوید' });
 }
 
-// ──────────── Persian Day Names ────────────
+// Persian Day Names Helper
 const persianDays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
-function getDayOfWeek(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  // Convert JS day (0=Sunday) to Persian (0=Saturday)
-  return (day + 1) % 7;
-}
+// ──────────── API Routes ────────────
 
-// ──────────── Auth Routes ────────────
+// Auth
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const [users] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-
-    if (users.length === 0) {
-      return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
-    }
-
+    if (users.length === 0) return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
+    
     const valid = await bcrypt.compare(password, users[0].password_hash);
-    if (!valid) {
-      return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
-    }
+    if (!valid) return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
 
     req.session.userId = users[0].id;
     req.session.userName = users[0].full_name;
@@ -296,95 +248,65 @@ app.get('/api/me', (req, res) => {
   }
 });
 
-// ──────────── Subjects Routes ────────────
+// Subjects
 app.get('/api/subjects', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM subjects ORDER BY name');
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/subjects', requireAuth, async (req, res) => {
   try {
     const { name, color, icon } = req.body;
-    const [result] = await pool.query(
-      'INSERT INTO subjects (name, color, icon) VALUES (?, ?, ?)',
-      [name, color || '#4A90D9', icon || '📖']
-    );
+    const [result] = await pool.query('INSERT INTO subjects (name, color, icon) VALUES (?, ?, ?)', [name, color || '#4A90D9', icon || '📖']);
     res.json({ id: result.insertId, name, color, icon });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/subjects/:id', requireAuth, async (req, res) => {
   try {
     const { name, color, icon } = req.body;
-    await pool.query(
-      'UPDATE subjects SET name=?, color=?, icon=? WHERE id=?',
-      [name, color, icon, req.params.id]
-    );
+    await pool.query('UPDATE subjects SET name=?, color=?, icon=? WHERE id=?', [name, color, icon, req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/subjects/:id', requireAuth, async (req, res) => {
   try {
     await pool.query('DELETE FROM subjects WHERE id=?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ──────────── Teachers Routes ────────────
+// Teachers
 app.get('/api/teachers', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM teachers ORDER BY name');
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/teachers', requireAuth, upload.single('photo'), async (req, res) => {
   try {
     const { name, phone, specialty } = req.body;
     const photo_url = req.file ? `/uploads/${req.file.filename}` : null;
-    const [result] = await pool.query(
-      'INSERT INTO teachers (name, photo_url, phone, specialty) VALUES (?, ?, ?, ?)',
-      [name, photo_url, phone, specialty]
-    );
+    const [result] = await pool.query('INSERT INTO teachers (name, photo_url, phone, specialty) VALUES (?, ?, ?, ?)', [name, photo_url, phone, specialty]);
     res.json({ id: result.insertId, name, photo_url, phone, specialty });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/teachers/:id', requireAuth, upload.single('photo'), async (req, res) => {
   try {
     const { name, phone, specialty } = req.body;
     const photo_url = req.file ? `/uploads/${req.file.filename}` : undefined;
-
     if (photo_url) {
-      await pool.query(
-        'UPDATE teachers SET name=?, photo_url=?, phone=?, specialty=? WHERE id=?',
-        [name, photo_url, phone, specialty, req.params.id]
-      );
+      await pool.query('UPDATE teachers SET name=?, photo_url=?, phone=?, specialty=? WHERE id=?', [name, photo_url, phone, specialty, req.params.id]);
     } else {
-      await pool.query(
-        'UPDATE teachers SET name=?, phone=?, specialty=? WHERE id=?',
-        [name, phone, specialty, req.params.id]
-      );
+      await pool.query('UPDATE teachers SET name=?, phone=?, specialty=? WHERE id=?', [name, phone, specialty, req.params.id]);
     }
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/teachers/:id', requireAuth, async (req, res) => {
@@ -396,12 +318,10 @@ app.delete('/api/teachers/:id', requireAuth, async (req, res) => {
     }
     await pool.query('DELETE FROM teachers WHERE id=?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ──────────── Weekly Schedule Routes ────────────
+// Schedule
 app.get('/api/schedule', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -413,188 +333,116 @@ app.get('/api/schedule', requireAuth, async (req, res) => {
       ORDER BY ws.day_of_week, ws.start_time
     `);
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/schedule', requireAuth, async (req, res) => {
   try {
     const { day_of_week, start_time, end_time, subject_id, teacher_id, room } = req.body;
-    const [result] = await pool.query(
-      'INSERT INTO weekly_schedule (day_of_week, start_time, end_time, subject_id, teacher_id, room) VALUES (?, ?, ?, ?, ?, ?)',
-      [day_of_week, start_time, end_time, subject_id, teacher_id || null, room || null]
-    );
+    const [result] = await pool.query('INSERT INTO weekly_schedule (day_of_week, start_time, end_time, subject_id, teacher_id, room) VALUES (?, ?, ?, ?, ?, ?)',
+      [day_of_week, start_time, end_time, subject_id, teacher_id || null, room || null]);
     res.json({ id: result.insertId, ...req.body });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/schedule/:id', requireAuth, async (req, res) => {
   try {
     const { day_of_week, start_time, end_time, subject_id, teacher_id, room, is_active } = req.body;
-    await pool.query(
-      'UPDATE weekly_schedule SET day_of_week=?, start_time=?, end_time=?, subject_id=?, teacher_id=?, room=?, is_active=? WHERE id=?',
-      [day_of_week, start_time, end_time, subject_id, teacher_id || null, room || null, is_active !== false, req.params.id]
-    );
+    await pool.query('UPDATE weekly_schedule SET day_of_week=?, start_time=?, end_time=?, subject_id=?, teacher_id=?, room=?, is_active=? WHERE id=?',
+      [day_of_week, start_time, end_time, subject_id, teacher_id || null, room || null, is_active !== false, req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/schedule/:id', requireAuth, async (req, res) => {
   try {
     await pool.query('DELETE FROM weekly_schedule WHERE id=?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ──────────── Study Logs Routes ────────────
+// Study Logs
 app.get('/api/study-logs', requireAuth, async (req, res) => {
   try {
     const { from, to, subject_id } = req.query;
-    let query = `
-      SELECT sl.*, s.name as subject_name, s.color as subject_color, s.icon as subject_icon
-      FROM study_logs sl
-      JOIN subjects s ON sl.subject_id = s.id
-      WHERE 1=1
-    `;
+    let query = `SELECT sl.*, s.name as subject_name, s.color as subject_color, s.icon as subject_icon FROM study_logs sl JOIN subjects s ON sl.subject_id = s.id WHERE 1=1`;
     const params = [];
-
     if (from) { query += ' AND sl.study_date >= ?'; params.push(from); }
     if (to) { query += ' AND sl.study_date <= ?'; params.push(to); }
     if (subject_id) { query += ' AND sl.subject_id = ?'; params.push(subject_id); }
-
     query += ' ORDER BY sl.study_date DESC, sl.start_time DESC LIMIT 200';
-
     const [rows] = await pool.query(query, params);
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/study-logs', requireAuth, async (req, res) => {
   try {
     const { subject_id, study_date, start_time, end_time, topic, notes, quality_rating } = req.body;
-
-    // Calculate duration
     const start = dayjs(`2000-01-01 ${start_time}`);
     const end = dayjs(`2000-01-01 ${end_time}`);
     let duration_minutes = end.diff(start, 'minute');
-    if (duration_minutes < 0) duration_minutes += 1440; // handle midnight crossing
-
-    const [result] = await pool.query(
-      'INSERT INTO study_logs (subject_id, study_date, start_time, end_time, duration_minutes, topic, notes, quality_rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [subject_id, study_date, start_time, end_time, duration_minutes, topic || null, notes || null, quality_rating || 3]
-    );
+    if (duration_minutes < 0) duration_minutes += 1440;
+    const [result] = await pool.query('INSERT INTO study_logs (subject_id, study_date, start_time, end_time, duration_minutes, topic, notes, quality_rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [subject_id, study_date, start_time, end_time, duration_minutes, topic || null, notes || null, quality_rating || 3]);
     res.json({ id: result.insertId, duration_minutes, ...req.body });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/study-logs/:id', requireAuth, async (req, res) => {
   try {
     const { subject_id, study_date, start_time, end_time, topic, notes, quality_rating } = req.body;
-
     const start = dayjs(`2000-01-01 ${start_time}`);
     const end = dayjs(`2000-01-01 ${end_time}`);
     let duration_minutes = end.diff(start, 'minute');
     if (duration_minutes < 0) duration_minutes += 1440;
-
-    await pool.query(
-      'UPDATE study_logs SET subject_id=?, study_date=?, start_time=?, end_time=?, duration_minutes=?, topic=?, notes=?, quality_rating=? WHERE id=?',
-      [subject_id, study_date, start_time, end_time, duration_minutes, topic, notes, quality_rating, req.params.id]
-    );
+    await pool.query('UPDATE study_logs SET subject_id=?, study_date=?, start_time=?, end_time=?, duration_minutes=?, topic=?, notes=?, quality_rating=? WHERE id=?',
+      [subject_id, study_date, start_time, end_time, duration_minutes, topic, notes, quality_rating, req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/study-logs/:id', requireAuth, async (req, res) => {
   try {
     await pool.query('DELETE FROM study_logs WHERE id=?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ──────────── Statistics Routes ────────────
+// Stats
 app.get('/api/stats/overview', requireAuth, async (req, res) => {
   try {
     const today = dayjs().format('YYYY-MM-DD');
-    const weekStart = dayjs().startOf('week').add(1, 'day').format('YYYY-MM-DD'); // Saturday start
+    const weekStart = dayjs().startOf('week').add(1, 'day').format('YYYY-MM-DD');
     const monthStart = dayjs().startOf('month').format('YYYY-MM-DD');
 
-    const [todayStats] = await pool.query(
-      'SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs WHERE study_date = ?',
-      [today]
-    );
+    const [todayStats] = await pool.query('SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs WHERE study_date = ?', [today]);
+    const [weekStats] = await pool.query('SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs WHERE study_date >= ?', [weekStart]);
+    const [monthStats] = await pool.query('SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs WHERE study_date >= ?', [monthStart]);
+    const [totalStats] = await pool.query('SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs');
 
-    const [weekStats] = await pool.query(
-      'SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs WHERE study_date >= ?',
-      [weekStart]
-    );
-
-    const [monthStats] = await pool.query(
-      'SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs WHERE study_date >= ?',
-      [monthStart]
-    );
-
-    const [totalStats] = await pool.query(
-      'SELECT COUNT(*) as sessions, COALESCE(SUM(duration_minutes),0) as total_minutes FROM study_logs'
-    );
-
-    // Subject breakdown this week
     const [subjectBreakdown] = await pool.query(`
       SELECT s.name, s.color, s.icon, COALESCE(SUM(sl.duration_minutes),0) as total_minutes, COUNT(sl.id) as sessions
-      FROM subjects s
-      LEFT JOIN study_logs sl ON s.id = sl.subject_id AND sl.study_date >= ?
-      GROUP BY s.id
-      ORDER BY total_minutes DESC
+      FROM subjects s LEFT JOIN study_logs sl ON s.id = sl.subject_id AND sl.study_date >= ?
+      GROUP BY s.id ORDER BY total_minutes DESC
     `, [weekStart]);
 
-    // Daily chart for last 14 days
     const [dailyChart] = await pool.query(`
       SELECT study_date, SUM(duration_minutes) as total_minutes
-      FROM study_logs
-      WHERE study_date >= DATE_SUB(?, INTERVAL 13 DAY)
-      GROUP BY study_date
-      ORDER BY study_date
+      FROM study_logs WHERE study_date >= DATE_SUB(?, INTERVAL 13 DAY)
+      GROUP BY study_date ORDER BY study_date
     `, [today]);
 
-    res.json({
-      today: todayStats[0],
-      week: weekStats[0],
-      month: monthStats[0],
-      total: totalStats[0],
-      subjectBreakdown,
-      dailyChart
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ today: todayStats[0], week: weekStats[0], month: monthStats[0], total: totalStats[0], subjectBreakdown, dailyChart });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ──────────── Goals Routes ────────────
+// Goals
 app.get('/api/goals', requireAuth, async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT g.*, s.name as subject_name, s.color, s.icon
-      FROM study_goals g
-      JOIN subjects s ON g.subject_id = s.id
-    `);
+    const [rows] = await pool.query('SELECT g.*, s.name as subject_name, s.color, s.icon FROM study_goals g JOIN subjects s ON g.subject_id = s.id');
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/goals', requireAuth, async (req, res) => {
@@ -602,88 +450,65 @@ app.post('/api/goals', requireAuth, async (req, res) => {
     const { subject_id, weekly_target_minutes } = req.body;
     const [existing] = await pool.query('SELECT id FROM study_goals WHERE subject_id=?', [subject_id]);
     if (existing.length > 0) {
-      await pool.query('UPDATE study_goals SET weekly_target_minutes=? WHERE subject_id=?',
-        [weekly_target_minutes, subject_id]);
+      await pool.query('UPDATE study_goals SET weekly_target_minutes=? WHERE subject_id=?', [weekly_target_minutes, subject_id]);
       res.json({ success: true, updated: true });
     } else {
-      const [result] = await pool.query(
-        'INSERT INTO study_goals (subject_id, weekly_target_minutes) VALUES (?, ?)',
-        [subject_id, weekly_target_minutes]
-      );
+      const [result] = await pool.query('INSERT INTO study_goals (subject_id, weekly_target_minutes) VALUES (?, ?)', [subject_id, weekly_target_minutes]);
       res.json({ id: result.insertId, subject_id, weekly_target_minutes });
     }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ──────────── Exams Routes ────────────
+// Exams
 app.get('/api/exams', requireAuth, async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT e.*, s.name as subject_name, s.color, s.icon
-      FROM exams e
-      JOIN subjects s ON e.subject_id = s.id
-      ORDER BY e.exam_date DESC
-    `);
+    const [rows] = await pool.query('SELECT e.*, s.name as subject_name, s.color, s.icon FROM exams e JOIN subjects s ON e.subject_id = s.id ORDER BY e.exam_date DESC');
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/exams', requireAuth, async (req, res) => {
   try {
     const { subject_id, exam_date, exam_time, type, score, max_score, notes } = req.body;
-    const [result] = await pool.query(
-      'INSERT INTO exams (subject_id, exam_date, exam_time, type, score, max_score, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [subject_id, exam_date, exam_time || null, type || 'میان‌ترم', score || null, max_score || 20, notes || null]
-    );
+    const [result] = await pool.query('INSERT INTO exams (subject_id, exam_date, exam_time, type, score, max_score, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [subject_id, exam_date, exam_time || null, type || 'میان‌ترم', score || null, max_score || 20, notes || null]);
     res.json({ id: result.insertId, ...req.body });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/exams/:id', requireAuth, async (req, res) => {
   try {
     const { subject_id, exam_date, exam_time, type, score, max_score, notes } = req.body;
-    await pool.query(
-      'UPDATE exams SET subject_id=?, exam_date=?, exam_time=?, type=?, score=?, max_score=?, notes=? WHERE id=?',
-      [subject_id, exam_date, exam_time, type, score, max_score, notes, req.params.id]
-    );
+    await pool.query('UPDATE exams SET subject_id=?, exam_date=?, exam_time=?, type=?, score=?, max_score=?, notes=? WHERE id=?',
+      [subject_id, exam_date, exam_time, type, score, max_score, notes, req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/exams/:id', requireAuth, async (req, res) => {
   try {
     await pool.query('DELETE FROM exams WHERE id=?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ──────────── Health Check ────────────
+// Health Check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ──────────── Serve Frontend ────────────
+// Serve Frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ──────────── Error Handler ────────────
+// Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message || 'خطای سرور' });
 });
 
-// ──────────── Start Server ────────────
+// Start Server
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
