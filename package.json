@@ -1,7 +1,6 @@
 {
-  "name": "student-study-tracker",
-  "version": "2.0.0",
-  "description": "سیستم پیشرفته پیگیری مطالعه با رابط کاربری مدرن",
+  "name": "student-tracker-pro",
+  "version": "3.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
